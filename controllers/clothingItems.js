@@ -17,7 +17,7 @@ module.exports.getItems = (req, res, next) => {
 // POST /items
 module.exports.createItem = (req, res, next) => {
   const { name, weather, imageUrl } = req.body; // owner not required by tests
-  ClothingItem.create({ name, weather, imageUrl })
+  ClothingItem.create({ name, weather, imageUrl, owner: req.user._id })
     .then((created) => res.status(201).send(created))
     .catch((err) => {
       console.error(err);
@@ -55,6 +55,7 @@ module.exports.deleteItem = (req, res, next) => {
 };
 
 // PUT /items/:itemId/likes
+// PUT /items/:itemId/likes
 module.exports.likeItem = (req, res, next) => {
   const { itemId } = req.params;
 
@@ -75,13 +76,14 @@ module.exports.likeItem = (req, res, next) => {
     .then((updated) => res.send(updated))
     .catch((err) => {
       console.error(err);
-      if (err.name === "CastError" || err.name === "ValidationError") {
+      if (err.name === "CastError") {
         return res.status(BAD_REQUEST).send({ message: "Invalid itemId" });
       }
       return next(err);
     });
 };
 
+// DELETE /items/:itemId/likes
 // DELETE /items/:itemId/likes
 module.exports.dislikeItem = (req, res, next) => {
   const { itemId } = req.params;
@@ -103,7 +105,7 @@ module.exports.dislikeItem = (req, res, next) => {
     .then((updated) => res.send(updated))
     .catch((err) => {
       console.error(err);
-      if (err.name === "CastError" || err.name === "ValidationError") {
+      if (err.name === "CastError") {
         return res.status(BAD_REQUEST).send({ message: "Invalid itemId" });
       }
       return next(err);
