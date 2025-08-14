@@ -3,6 +3,12 @@ const mongoose = require("mongoose");
 
 const usersRouter = require("./routes/users");
 const clothingItemsRouter = require("./routes/clothingItems");
+const {
+  BAD_REQUEST,
+  NOT_FOUND,
+  INTERNAL_SERVER_ERROR,
+} = require("./utils/errors");
+
 
 const app = express();
 app.use(express.json());
@@ -19,11 +25,11 @@ app.use("/items", clothingItemsRouter);
 
 // 404 for non-existent resources
 app.use((req, res) => {
-  res.status(404).send({ message: "Requested resource not found" });
+  res.status(NOT_FOUND).send({ message: "Requested resource not found" });
 });
 
-// Central error handler (exact message required)
-const { INTERNAL_SERVER_ERROR } = require("./utils/errors");
+// // Central error handler (exact message required)
+// const { INTERNAL_SERVER_ERROR } = require("./utils/errors");
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   console.error(err); // required: always log
