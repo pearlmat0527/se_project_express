@@ -7,8 +7,9 @@ const userSchema = new mongoose.Schema(
     name: { type: String, minlength: 2, maxlength: 30, default: "Explorer" },
     avatar: {
       type: String,
+      required: true,
       validate: {
-        validator: (v) => !v || validator.isURL(v),
+        validator: (v) => validator.isURL(v),
         message: "Invalid URL",
       },
     },
