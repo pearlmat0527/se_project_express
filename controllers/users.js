@@ -1,30 +1,42 @@
-// controllers/users.js
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 const { JWT_SECRET } = require("../utils/config");
+const {
+  OK,
+  CREATED,
+  BAD_REQUEST,
+  UNAUTHORIZED,
+  NOT_FOUND,
+  CONFLICT,
+} = require("../utils/errors");
 
 // POST /signin
 async function login(req, res, next) {
   try {
     const { email, password } = req.body;
 
-    if (!email) return res.status(400).send({ message: "Email is required" });
+    if (!email)
+      return res.status(BAD_REQUEST).send({ message: "Email is required" });
     if (!password)
-      return res.status(400).send({ message: "Password is required" });
+      return res.status(BAD_REQUEST).send({ message: "Password is required" });
 
     const user = await User.findOne({
       email: String(email).toLowerCase().trim(),
     }).select("+password");
     if (!user)
-      return res.status(401).send({ message: "Invalid email or password" });
+      return res
+        .status(UNAUTHORIZED)
+        .send({ message: "Invalid email or password" });
 
     const ok = await bcrypt.compare(password, user.password);
     if (!ok)
-      return res.status(401).send({ message: "Invalid email or password" });
+      return res
+        .status(UNAUTHORIZED)
+        .send({ message: "Invalid email or password" });
 
     const token = jwt.sign({ _id: user._id }, JWT_SECRET, { expiresIn: "7d" });
-    return res.send({ token });
+    return res.status(OK).send({ token });
   } catch (e) {
     return next(e);
   }
@@ -34,18 +46,14 @@ async function login(req, res, next) {
 async function createUser(req, res, next) {
   try {
     const { name, avatar, email, password } = req.body;
+
     if (!email || !password) {
       return res
-        .status(400)
+        .status(BAD_REQUEST)
         .send({ message: "Email and password are required" });
     }
 
-    if (await User.exists({ email: String(email).toLowerCase().trim() })) {
-      return res
-        .status(409)
-        .send({ message: "User with this email already exists" });
-    }
-
+    // ❌ REMOVE the exists() pre-check (duplicate is handled by the unique index)
     const hash = await bcrypt.hash(password, 10);
     const user = await User.create({
       name,
@@ -56,16 +64,16 @@ async function createUser(req, res, next) {
 
     const obj = user.toObject();
     delete obj.password;
-    return res.status(201).send(obj);
+    return res.status(CREATED).send(obj);
   } catch (err) {
     if (err.code === 11000) {
       return res
-        .status(409)
+        .status(CONFLICT)
         .send({ message: "User with this email already exists" });
     }
     if (err.name === "ValidationError" || err.name === "CastError") {
       return res
-        .status(400)
+        .status(BAD_REQUEST)
         .send({ message: "Invalid data for user creation" });
     }
     return next(err);
@@ -76,8 +84,8 @@ async function createUser(req, res, next) {
 async function getCurrentUser(req, res, next) {
   try {
     const me = await User.findById(req.user._id).select("-password");
-    if (!me) return res.status(404).send({ message: "User not found" });
-    return res.send(me);
+    if (!me) return res.status(NOT_FOUND).send({ message: "User not found" });
+    return res.status(OK).send(me);
   } catch (e) {
     return next(e);
   }
@@ -92,11 +100,14 @@ async function updateUser(req, res, next) {
       { name, avatar },
       { new: true, runValidators: true, select: "-password" }
     );
-    if (!updated) return res.status(404).send({ message: "User not found" });
-    return res.send(updated);
+    if (!updated)
+      return res.status(NOT_FOUND).send({ message: "User not found" });
+    return res.status(OK).send(updated);
   } catch (e) {
     if (e.name === "ValidationError" || e.name === "CastError") {
-      return res.status(400).send({ message: "Invalid data for user update" });
+      return res
+        .status(BAD_REQUEST)
+        .send({ message: "Invalid data for user update" });
     }
     return next(e);
   }

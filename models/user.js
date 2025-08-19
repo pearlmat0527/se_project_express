@@ -4,28 +4,30 @@ const validator = require("validator");
 
 const userSchema = new mongoose.Schema(
   {
-    name: { type: String, minlength: 2, maxlength: 30, default: "Explorer" },
+    name: { type: String, required: true, minlength: 2, maxlength: 30 },
     avatar: {
       type: String,
       required: true,
       validate: {
-        validator: (v) => validator.isURL(v),
+        validator: (v) =>
+          validator.isURL(v, {
+            protocols: ["http", "https"],
+            require_protocol: true,
+          }),
         message: "Invalid URL",
       },
     },
     email: {
       type: String,
       required: true,
-      unique: true, // keep unique here
+      unique: true, // schema-level hint
       lowercase: true,
+      trim: true,
       validate: { validator: validator.isEmail, message: "Invalid email" },
     },
     password: { type: String, required: true, select: false },
   },
   { versionKey: false }
 );
-
-// If you added this earlier, **remove** it to stop the duplicate index warning:
-// userSchema.index({ email: 1 }, { unique: true });
 
 module.exports = mongoose.model("User", userSchema);

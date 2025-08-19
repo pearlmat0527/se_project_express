@@ -1,14 +1,19 @@
-// controllers/clothingItems.js
 const mongoose = require("mongoose");
 const Item = require("../models/clothingItem");
-const { BAD_REQUEST, NOT_FOUND, FORBIDDEN } = require("../utils/errors");
+const {
+  BAD_REQUEST,
+  NOT_FOUND,
+  FORBIDDEN,
+  CREATED,
+  OK,
+} = require("../utils/errors");
 
 const isValidObjectId = (id) => mongoose.isValidObjectId(id);
 
 // GET /items (public)
 module.exports.getItems = (req, res, next) => {
   Item.find({})
-    .then((items) => res.send(items))
+    .then((items) => res.status(OK).send(items))
     .catch(next);
 };
 
@@ -18,7 +23,7 @@ module.exports.createItem = (req, res, next) => {
   const owner = req.user._id;
 
   Item.create({ name, weather, imageUrl, owner })
-    .then((item) => res.status(201).send(item))
+    .then((item) => res.status(CREATED).send(item))
     .catch((err) => {
       if (err.name === "ValidationError") {
         return res
@@ -42,10 +47,9 @@ module.exports.likeItem = (req, res, next) => {
     { new: true }
   )
     .then((item) => {
-      if (!item) {
+      if (!item)
         return res.status(NOT_FOUND).send({ message: "Item not found" });
-      }
-      return res.send(item);
+      return res.status(OK).send(item);
     })
     .catch(next);
 };
@@ -63,10 +67,9 @@ module.exports.dislikeItem = (req, res, next) => {
     { new: true }
   )
     .then((item) => {
-      if (!item) {
+      if (!item)
         return res.status(NOT_FOUND).send({ message: "Item not found" });
-      }
-      return res.send(item);
+      return res.status(OK).send(item);
     })
     .catch(next);
 };
@@ -80,15 +83,14 @@ module.exports.deleteItem = (req, res, next) => {
 
   return Item.findById(itemId)
     .then((item) => {
-      if (!item) {
+      if (!item)
         return res.status(NOT_FOUND).send({ message: "Item not found" });
-      }
       if (String(item.owner) !== String(req.user._id)) {
         return res
           .status(FORBIDDEN)
           .send({ message: "You cannot delete another user's item" });
       }
-      return item.deleteOne().then(() => res.send(item));
+      return item.deleteOne().then(() => res.status(OK).send(item));
     })
     .catch(next);
 };
