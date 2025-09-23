@@ -2,13 +2,18 @@
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const { errors } = require("celebrate");
+const { requestLogger, errorLogger } = require("./middlewares/logger"); // <- NEW
 
 const { login, createUser } = require("./controllers/users");
 const { getItems } = require("./controllers/clothingItems");
 const usersRouter = require("./routes/users");
 const clothingItemsRouter = require("./routes/clothingItems");
 const auth = require("./middlewares/auth");
-const User = require("./models/user"); // <-- import to build indexes
+const User = require("./models/user"); // ensure unique indexes are built
+
+// ---- Joi/Celebrate validators ----
+const { validateSignin, validateSignup } = require("./middlewares/validators");
 
 const {
   BAD_REQUEST,
@@ -22,10 +27,11 @@ const {
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(requestLogger); // <- NEW: log every incoming request
 
 // --- PUBLIC endpoints ---
-app.post("/signin", login);
-app.post("/signup", createUser);
+app.post("/signin", validateSignin, login);
+app.post("/signup", validateSignup, createUser);
 app.get("/items", getItems); // public
 
 // --- AUTH GATE ---
@@ -35,22 +41,28 @@ app.use(auth); // protects everything below
 app.use("/items", clothingItemsRouter);
 app.use("/users", usersRouter);
 
-// --- 404 for unknown routes ---
-app.use((req, res) =>
-  res.status(404).send({ message: "Requested resource not found" })
-);
+// --- 404 for unknown routes (forward to centralized error handler) ---
+app.use((req, res, next) => {
+  const err = new Error("Requested resource not found");
+  err.statusCode = NOT_FOUND;
+  next(err);
+});
 
-// --- CENTRALIZED ERROR HANDLER ---
+app.use(errorLogger); // <- NEW: log errors before handlers
+
+// --- Celebrate error handler (handles only Joi/celebrate validation errors) ---
+app.use(errors());
+
+// --- CENTRALIZED ERROR HANDLER (must be last) ---
 app.use((err, req, res, next) => {
   console.error(err);
 
   let status = err.statusCode || INTERNAL_SERVER_ERROR;
 
-  if (err.name === "ValidationError" || err.name === "CastError")
-    status = BAD_REQUEST;
-  if (err.code === 11000) status = CONFLICT; // duplicate key (email)
-  if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError")
-    status = UNAUTHORIZED;
+  // Map common library/framework errors to HTTP status codes
+  if (err.name === "ValidationError" || err.name === "CastError") status = BAD_REQUEST;
+  if (err.code === 11000) status = CONFLICT; // Mongo duplicate key (e.g., email)
+  if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") status = UNAUTHORIZED;
 
   const defaultMessages = {
     [BAD_REQUEST]: "Invalid data",
@@ -78,7 +90,7 @@ mongoose.set("autoIndex", true);
 
 mongoose
   .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => User.init()) // <-- builds the unique index on email
+  .then(() => User.init()) // builds the unique index on email
   .then(() => {
     app.listen(PORT, () => {
       console.log(`✅ Server listening on port ${PORT}`);
