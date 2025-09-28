@@ -3,9 +3,9 @@ const mongoose = require("mongoose");
 const Item = require("../models/clothingItem");
 const { CREATED, OK } = require("../utils/errors");
 
-const BadRequestError = require("../errors/BadRequestError");
-const NotFoundError = require("../errors/NotFoundError");
-const ForbiddenError = require("../errors/ForbiddenError");
+const BadRequestError = require("../utils/errors/BadRequestError");
+const NotFoundError = require("../utils/errors/NotFoundError");
+const ForbiddenError = require("../utils/errors/ForbiddenError");
 
 const isValidObjectId = (id) => mongoose.isValidObjectId(id);
 
