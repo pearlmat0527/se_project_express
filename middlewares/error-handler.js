@@ -1,4 +1,4 @@
-// middlewares/error.js
+// middlewares/error-handler.js
 const {
   BAD_REQUEST,
   UNAUTHORIZED,
@@ -11,14 +11,20 @@ const {
 module.exports = (err, req, res, next) => {
   console.error(err);
 
+  // prefer explicit statusCode from custom AppError, else 500
   let status = err.statusCode || INTERNAL_SERVER_ERROR;
 
-  // map common lib errors → http statuses
-  if (err.name === "ValidationError" || err.name === "CastError")
-    status = BAD_REQUEST;
-  if (err.code === 11000) status = CONFLICT; // Mongo duplicate key
-  if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError")
-    status = UNAUTHORIZED;
+  // only map lib errors if no explicit custom status was provided
+  if (!err.statusCode) {
+    if (err.name === "ValidationError" || err.name === "CastError")
+      status = BAD_REQUEST;
+    else if (err.code === 11000) status = CONFLICT; // Mongo duplicate key
+    else if (
+      err.name === "JsonWebTokenError" ||
+      err.name === "TokenExpiredError"
+    )
+      status = UNAUTHORIZED;
+  }
 
   const defaultMessages = {
     [BAD_REQUEST]: "Invalid data",

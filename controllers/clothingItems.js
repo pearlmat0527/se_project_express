@@ -1,12 +1,11 @@
+// controllers/clothingItems.js
 const mongoose = require("mongoose");
 const Item = require("../models/clothingItem");
-const {
-  BAD_REQUEST,
-  NOT_FOUND,
-  FORBIDDEN,
-  CREATED,
-  OK,
-} = require("../utils/errors");
+const { CREATED, OK } = require("../utils/errors");
+
+const BadRequestError = require("../errors/BadRequestError");
+const NotFoundError = require("../errors/NotFoundError");
+const ForbiddenError = require("../errors/ForbiddenError");
 
 const isValidObjectId = (id) => mongoose.isValidObjectId(id);
 
@@ -26,9 +25,7 @@ module.exports.createItem = (req, res, next) => {
     .then((item) => res.status(CREATED).send(item))
     .catch((err) => {
       if (err.name === "ValidationError") {
-        return res
-          .status(BAD_REQUEST)
-          .send({ message: "Invalid data for item creation" });
+        return next(new BadRequestError("Invalid data for item creation"));
       }
       return next(err);
     });
@@ -38,7 +35,7 @@ module.exports.createItem = (req, res, next) => {
 module.exports.likeItem = (req, res, next) => {
   const { itemId } = req.params;
   if (!isValidObjectId(itemId)) {
-    return res.status(BAD_REQUEST).send({ message: "Invalid itemId" });
+    return next(new BadRequestError("Invalid itemId"));
   }
 
   return Item.findByIdAndUpdate(
@@ -47,8 +44,7 @@ module.exports.likeItem = (req, res, next) => {
     { new: true }
   )
     .then((item) => {
-      if (!item)
-        return res.status(NOT_FOUND).send({ message: "Item not found" });
+      if (!item) throw new NotFoundError("Item not found");
       return res.status(OK).send(item);
     })
     .catch(next);
@@ -58,7 +54,7 @@ module.exports.likeItem = (req, res, next) => {
 module.exports.dislikeItem = (req, res, next) => {
   const { itemId } = req.params;
   if (!isValidObjectId(itemId)) {
-    return res.status(BAD_REQUEST).send({ message: "Invalid itemId" });
+    return next(new BadRequestError("Invalid itemId"));
   }
 
   return Item.findByIdAndUpdate(
@@ -67,8 +63,7 @@ module.exports.dislikeItem = (req, res, next) => {
     { new: true }
   )
     .then((item) => {
-      if (!item)
-        return res.status(NOT_FOUND).send({ message: "Item not found" });
+      if (!item) throw new NotFoundError("Item not found");
       return res.status(OK).send(item);
     })
     .catch(next);
@@ -78,17 +73,14 @@ module.exports.dislikeItem = (req, res, next) => {
 module.exports.deleteItem = (req, res, next) => {
   const { itemId } = req.params;
   if (!isValidObjectId(itemId)) {
-    return res.status(BAD_REQUEST).send({ message: "Invalid itemId" });
+    return next(new BadRequestError("Invalid itemId"));
   }
 
   return Item.findById(itemId)
     .then((item) => {
-      if (!item)
-        return res.status(NOT_FOUND).send({ message: "Item not found" });
+      if (!item) throw new NotFoundError("Item not found");
       if (String(item.owner) !== String(req.user._id)) {
-        return res
-          .status(FORBIDDEN)
-          .send({ message: "You cannot delete another user's item" });
+        throw new ForbiddenError("You cannot delete another user's item");
       }
       return item.deleteOne().then(() => res.status(OK).send(item));
     })

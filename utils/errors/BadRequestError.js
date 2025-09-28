@@ -1,9 +1,7 @@
-// errors/AppError.js
-class AppError extends Error {
-  constructor(message, statusCode) {
-    super(message);
-    this.statusCode = statusCode;
-    Error.captureStackTrace?.(this, this.constructor);
+const AppError = require("./AppError");
+
+module.exports = class BadRequestError extends AppError {
+  constructor(message = "Bad request") {
+    super(message, 400);
   }
-}
-module.exports = AppError;
+};
