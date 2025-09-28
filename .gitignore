@@ -15,4 +15,5 @@ node_modules
 .vscode
 # logs
 *.log
-
+logs/
+*.log

@@ -1,22 +1,30 @@
 // middlewares/logger.js
+const path = require("path");
+const fs = require("fs");
 const winston = require("winston");
 const expressWinston = require("express-winston");
+let DailyRotateFile;
+try {
+  DailyRotateFile = require("winston-daily-rotate-file");
+} catch {}
 
-// Compact console message: timestamp + message (or error stack)
+const LOG_DIR = path.join(process.cwd(), "logs");
+if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR);
+
+const isProd = process.env.NODE_ENV === "production";
+
+// Console format: timestamp + message (or error stack). Color in dev.
 const messageFormat = winston.format.combine(
   winston.format.timestamp(),
+  isProd ? winston.format.uncolorize() : winston.format.colorize(),
   winston.format.printf((info) => {
     const { timestamp, level, message } = info;
-    // express-winston attaches metadata on info.meta
-    const stack =
-      info?.meta?.error?.stack ||
-      info?.error?.stack || // some versions put it here
-      null;
+    const stack = info?.meta?.error?.stack || info?.error?.stack || null;
     return `${timestamp} ${level}: ${stack || message}`;
   })
 );
 
-// --- helpers to keep sensitive data out of logs ---
+// Redact sensitive bits
 const redactHeaders = (headers = {}) => {
   const h = { ...headers };
   if (h.authorization) h.authorization = "[REDACTED]";
@@ -24,46 +32,73 @@ const redactHeaders = (headers = {}) => {
   return h;
 };
 
-const requestFilter = (req, propName) => {
-  // Keep defaults, but scrub a few things just in case
-  if (propName === "headers") return redactHeaders(req.headers);
-  if (propName === "body" && req.body && typeof req.body === "object") {
+const requestFilter = (req, prop) => {
+  if (prop === "headers") return redactHeaders(req.headers);
+  if (prop === "body" && req.body && typeof req.body === "object") {
     const clone = { ...req.body };
     if ("password" in clone) clone.password = "[REDACTED]";
     if ("token" in clone) clone.token = "[REDACTED]";
     return clone;
   }
-  return req[propName];
+  return req[prop];
 };
 
-// --- Request logger: logs every incoming request ---
-const requestLogger = expressWinston.logger({
-  // Nicely formatted "HTTP GET /path" message
-  expressFormat: true, // uses morgan-style msg under the hood
-  meta: true, // include req/res meta (headers, statusCode, responseTime, etc.)
-  requestFilter, // scrub sensitive stuff
-  transports: [
-    // concise console
-    new winston.transports.Console({ format: messageFormat }),
-    // rich JSON file logs
-    new winston.transports.File({
-      filename: "request.log",
-      format: winston.format.json(),
-    }),
-  ],
+// Optional: enrich logs with requestId/userId if available
+const dynamicMeta = (req) => ({
+  requestId: req.headers["x-request-id"],
+  userId: req.user?._id,
 });
 
-// --- Error logger: logs errors passed through middleware chain ---
+// Transports (rotate in prod, single file in dev)
+const requestTransports = [
+  new winston.transports.Console({ format: messageFormat }),
+  DailyRotateFile && isProd
+    ? new DailyRotateFile({
+        dirname: LOG_DIR,
+        filename: "request-%DATE%.log",
+        datePattern: "YYYY-MM-DD",
+        maxFiles: "14d",
+        format: winston.format.json(),
+      })
+    : new winston.transports.File({
+        filename: path.join(LOG_DIR, "request.log"),
+        format: winston.format.json(),
+      }),
+].filter(Boolean);
+
+const errorTransports = [
+  new winston.transports.Console({ format: messageFormat }),
+  DailyRotateFile && isProd
+    ? new DailyRotateFile({
+        dirname: LOG_DIR,
+        filename: "error-%DATE%.log",
+        datePattern: "YYYY-MM-DD",
+        maxFiles: "30d",
+        format: winston.format.json(),
+      })
+    : new winston.transports.File({
+        filename: path.join(LOG_DIR, "error.log"),
+        format: winston.format.json(),
+      }),
+].filter(Boolean);
+
+// Request logger
+const requestLogger = expressWinston.logger({
+  expressFormat: true,
+  meta: true,
+  requestFilter,
+  statusLevels: true, // 4xx=warn, 5xx=error in console
+  dynamicMeta,
+  // ignoreRoute: (req) => req.path === '/health', // uncomment if desired
+  transports: requestTransports,
+});
+
+// Error logger
 const errorLogger = expressWinston.errorLogger({
   meta: true,
   requestFilter,
-  transports: [
-    new winston.transports.Console({ format: messageFormat }),
-    new winston.transports.File({
-      filename: "error.log",
-      format: winston.format.json(),
-    }),
-  ],
+  dynamicMeta,
+  transports: errorTransports,
 });
 
 module.exports = { requestLogger, errorLogger };
