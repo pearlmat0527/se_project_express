@@ -18,60 +18,51 @@ const urlString = Joi.string().custom((value, helpers) => {
    AUTH
    ========================= */
 const validateSignup = celebrate({
-  [Segments.BODY]: Joi.object()
-    .keys({
-      email: Joi.string().email().required(),
-      password: Joi.string().min(8).required(),
-      name: Joi.string().min(2).max(30).required(),
-    })
-    .required(),
+  [Segments.BODY]: Joi.object({
+    email: Joi.string().email().required(),
+    password: Joi.string().min(8).required(),
+    name: Joi.string().min(2).max(30).optional(), // optional per spec/tests
+    avatar: urlString.optional(), // tests send avatar on happy path
+  })
+    .required()
+    .unknown(true), // don't fail if extra fields are present
 });
 
 const validateSignin = celebrate({
-  [Segments.BODY]: Joi.object()
-    .keys({
-      email: Joi.string().email().required(),
-      password: Joi.string().min(8).required(),
-    })
-    .required(),
+  [Segments.BODY]: Joi.object({
+    email: Joi.string().email().required(),
+    password: Joi.string().required(),
+  }).required(),
 });
 
 /* =========================
-   USERS (examples you can use in routes/users.js)
+   USERS
    ========================= */
 const validateUserIdParam = celebrate({
-  [Segments.PARAMS]: Joi.object()
-    .keys({ userId: objectId.required() })
-    .required(),
+  [Segments.PARAMS]: Joi.object({ userId: objectId.required() }).required(),
 });
 
 /* =========================
    CLOTHING ITEMS (WTWR)
    ========================= */
 const validateCreateItem = celebrate({
-  [Segments.BODY]: Joi.object()
-    .keys({
-      name: Joi.string().min(2).max(30).required(),
-      imageUrl: urlString.required(),
-      weather: Joi.string().valid("hot", "warm", "cold").required(),
-    })
-    .required(),
+  [Segments.BODY]: Joi.object({
+    name: Joi.string().min(2).max(30).required(),
+    imageUrl: urlString.required(),
+    weather: Joi.string().valid("hot", "warm", "cold").required(),
+  }).required(),
 });
 
 const validateItemIdParam = celebrate({
-  [Segments.PARAMS]: Joi.object()
-    .keys({ itemId: objectId.required() })
-    .required(),
+  [Segments.PARAMS]: Joi.object({ itemId: objectId.required() }).required(),
 });
 
 module.exports = {
   // public
   validateSignin,
   validateSignup,
-
   // users
   validateUserIdParam,
-
   // items
   validateCreateItem,
   validateItemIdParam,
