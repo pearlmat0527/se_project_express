@@ -3,7 +3,7 @@ require("dotenv").config(); // load .env from project root
 
 const PORT = process.env.PORT || 3001;
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/wtwr_db";
-const JWT_SECRET = process.env.JWT_SECRET || "change-me-in-prod";
+const JWT_SECRET = process.env.JWT_SECRET || "super-strong-secret";
 
 // guardrail so we don't boot without a DB URI
 if (!MONGO_URI || typeof MONGO_URI !== "string") {
