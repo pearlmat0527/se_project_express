@@ -1,7 +1,9 @@
 // app.js
+
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
+require("dotenv").config();
 const { errors: celebrateErrors } = require("celebrate");
 
 const { requestLogger, errorLogger } = require("./middlewares/logger");
@@ -19,6 +21,7 @@ const { PORT, MONGO_URI } = require("./utils/config");
 const { validateSignin, validateSignup } = require("./middlewares/validators");
 
 const app = express();
+
 
 // ----- Global middleware -----
 app.use(cors());
@@ -60,7 +63,7 @@ mongoose
   })
   .catch((err) => {
     console.error("❌ DB / index init failed:", err);
-    process.exit(1);
+    process.exit(1);        
   });
 
 module.exports = app;
