@@ -8,7 +8,9 @@ const {
   INTERNAL_SERVER_ERROR,
 } = require("../utils/errors");
 
+// eslint-disable-next-line no-unused-vars
 module.exports = (err, req, res, next) => {
+  // eslint-disable-next-line no-console
   console.error(err);
 
   // prefer explicit statusCode from custom AppError, else 500

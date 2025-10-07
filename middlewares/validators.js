@@ -57,12 +57,25 @@ const validateItemIdParam = celebrate({
   [Segments.PARAMS]: Joi.object({ itemId: objectId.required() }).required(),
 });
 
+
+// middlewares/validators.js
+// Add this with your other validators:
+
+const validateUpdateMe = celebrate({
+  [Segments.BODY]: Joi.object({
+    name: Joi.string().min(2).max(30).optional(),
+    avatar: urlString.optional(),
+  }).required(),
+});
+
+// Then add it to exports:
 module.exports = {
   // public
   validateSignin,
   validateSignup,
   // users
   validateUserIdParam,
+  validateUpdateMe,  // <-- ADD THIS
   // items
   validateCreateItem,
   validateItemIdParam,

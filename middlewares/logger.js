@@ -3,12 +3,19 @@ const path = require("path");
 const fs = require("fs");
 const winston = require("winston");
 const expressWinston = require("express-winston");
+
 let DailyRotateFile;
+
 try {
+  // eslint-disable-next-line global-require, import/no-unresolved
   DailyRotateFile = require("winston-daily-rotate-file");
-} catch {}
+} catch (err) {
+  // winston-daily-rotate-file is optional
+  DailyRotateFile = null;
+}
 
 const LOG_DIR = path.join(process.cwd(), "logs");
+
 if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR);
 
 const isProd = process.env.NODE_ENV === "production";
